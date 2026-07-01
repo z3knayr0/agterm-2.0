@@ -43,6 +43,10 @@ public final class Session: Identifiable {
     /// capture it, so it never survives a relaunch.
     public var agentIndicator = AgentIndicator()
 
+    /// The session recording store (Phase 1 feature). Captures output and input for playback/export.
+    /// TODO: Implement RecordingStore in agtermCore
+    @ObservationIgnored public var recording: Any?
+
     /// The most-recent time the agent status was set to a non-idle value — stamped by
     /// `AppStore.setAgentIndicator` on EVERY non-idle set (`Date()` for any non-idle status, nil on idle),
     /// not only on an idle→non-idle transition. Sort key only — the attention list orders same-status
