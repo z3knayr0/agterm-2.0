@@ -99,9 +99,8 @@ paths:
   `show-image.sh <image> [size%]` opens an overlay (a real pty) and renders the image via the kitty graphics
   protocol, which the pinned ghostty draws NATIVELY — pure `base64` + chunked `\e_G` APC frames,
   NO kitty binary and NO external image tool.
-  (The pinned ghostty renders ONLY the kitty graphics protocol; iTerm2 OSC-1337 inline images and sixel
-  are `unimplemented` in that build — verified in upstream `src/terminal/osc/parsers/iterm2.zig`,
-  the `.File`/`.FilePart`/`.FileEnd`/`.MultipartFile` keys land in the `unimplemented OSC 1337` bucket.
+  (The pinned ghostty renders ONLY the kitty graphics protocol; other image protocols
+  are not supported in that build.)
   The agent CANNOT print graphics escapes to its own tool stdout — the harness escapes the control bytes
   — nor run a viewer in its tool shell — no `/dev/tty`; the overlay sidesteps both,
   so the method is agent-harness-agnostic and works identically for Codex.) It is invoked by absolute

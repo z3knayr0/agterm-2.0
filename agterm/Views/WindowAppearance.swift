@@ -133,8 +133,8 @@ enum WindowAppearance {
 
 // MARK: - Private CGS background-blur SPI
 
-// `CGSSetWindowBackgroundBlurRadius` is the private CoreGraphics call every macOS terminal
-// (Terminal.app, iTerm, Ghostty) uses to blur the content behind a translucent window. Undocumented
+// `CGSSetWindowBackgroundBlurRadius` is the private CoreGraphics call used to blur content
+// behind a translucent window. Undocumented
 // but long-stable; libghostty calls the same symbol. Resolved once via dlsym; a missing symbol
 // degrades to a no-op (no blur) rather than crashing. Adapted from thdxg/macterm (MIT).
 private let cgsDefaultConnection: (@convention(c) () -> Int32)? = {

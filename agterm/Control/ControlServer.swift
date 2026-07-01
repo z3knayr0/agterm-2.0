@@ -472,33 +472,21 @@ final class ControlServer {
             }
         case .sessionRecord:
             return resolveSession(request.target, window: request.args?.window) { store, id in
-                guard let session = store.session(withID: id) else {
-                    return ControlResponse(ok: false, error: "no such session")
-                }
-                if session.recording != nil {
-                    return ControlResponse(ok: false, error: "recording already active")
-                }
-                let recording = RecordingStore(sessionID: session.id)
-                recording.start()
-                session.recording = recording
+                let recordingStore = store.recordingStore(for: id)
+                recordingStore.start()
                 return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
             }
         case .sessionExport:
-            guard let outputPath = request.args?.outputPath, !outputPath.isEmpty else {
-                return ControlResponse(ok: false, error: "session.export requires --output-path")
-            }
             return resolveSession(request.target, window: request.args?.window) { store, id in
-                guard let session = store.session(withID: id) else {
-                    return ControlResponse(ok: false, error: "no such session")
-                }
-                guard let recording = session.recording else {
-                    return ControlResponse(ok: false, error: "no recording active")
+                let recordingStore = store.recordingStore(for: id)
+                guard let outputPath = request.args?.outputPath, !outputPath.isEmpty else {
+                    return ControlResponse(ok: false, error: "session.export requires outputPath")
                 }
                 do {
-                    try recording.export(to: outputPath)
-                    return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+                    try recordingStore.export(to: outputPath)
+                    return ControlResponse(ok: true, result: ControlResult(id: id.uuidString, text: "exported to \(outputPath)"))
                 } catch {
-                    return ControlResponse(ok: false, error: "export failed: \(error)")
+                    return ControlResponse(ok: false, error: "export failed: \(error.localizedDescription)")
                 }
             }
         case .sessionOverlayOpen:
@@ -586,6 +574,87 @@ final class ControlServer {
         case .themeList:
             return ControlResponse(ok: true, result: ControlResult(theme: actions.currentTheme,
                                                                     themes: actions.availableThemes()))
+        case .themeSave:
+            return ControlResponse(ok: false, error: "theme.save not yet implemented")
+        case .sessionSplitRemove:
+            return resolveSession(request.target, window: request.args?.window) { store, id in
+                store.splitPaneModel.close(id)
+                return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+            }
+        case .broadcastInput:
+            guard let text = request.args?.text, !text.isEmpty else {
+                return ControlResponse(ok: false, error: "broadcast.input requires text")
+            }
+            let results = store.broadcastState.broadcast(text)
+            return ControlResponse(ok: true, result: ControlResult(id: UUID().uuidString))
+        case .templateList:
+            let templates = store.templateLibrary.all()
+            return ControlResponse(ok: true, result: ControlResult(id: "\(templates.count) templates"))
+        case .templateApply:
+            guard let templateID = UUID(uuidString: request.args?.name ?? "") else {
+                return ControlResponse(ok: false, error: "template.apply requires valid templateID")
+            }
+            guard let template = store.templateLibrary.apply(templateID) else {
+                return ControlResponse(ok: false, error: "template not found")
+            }
+            return ControlResponse(ok: true, result: ControlResult(id: template.command))
+        case .metricsRead:
+            let summary = store.metricsCollector.summary()
+            return ControlResponse(ok: true, result: ControlResult(id: "metrics: \(summary.count) types"))
+        case .metricsReset:
+            store.metricsCollector.reset()
+            return ControlResponse(ok: true)
+        case .hookRegister:
+            guard let event = request.args?.event, !event.isEmpty else {
+                return ControlResponse(ok: false, error: "hook.register requires event")
+            }
+            guard let command = request.args?.command, !command.isEmpty else {
+                return ControlResponse(ok: false, error: "hook.register requires command")
+            }
+            let hookID = store.hookRegistry.register(event: HookRegistry.EventType(rawValue: event) ?? .sessionCreated, command: command)
+            return ControlResponse(ok: true, result: ControlResult(id: hookID.uuidString))
+        case .hookFire:
+            guard let event = request.args?.event, !event.isEmpty else {
+                return ControlResponse(ok: false, error: "hook.fire requires event")
+            }
+            store.hookRegistry.fire(HookRegistry.EventType(rawValue: event) ?? .sessionCreated)
+            return ControlResponse(ok: true)
+        case .remoteSync:
+            let results = store.remoteSession.sync()
+            return ControlResponse(ok: true, result: ControlResult(id: "\(results.count) peers synced"))
+        case .remoteConnect:
+            guard let peerID = UUID(uuidString: request.args?.peerID ?? "") else {
+                return ControlResponse(ok: false, error: "remote.connect requires valid peerID")
+            }
+            let success = store.remoteSession.connect(peerID: peerID)
+            return ControlResponse(ok: success, result: ControlResult(id: peerID.uuidString))
+        case .chatopsMessage:
+            guard let message = request.args?.text, !message.isEmpty else {
+                return ControlResponse(ok: false, error: "chatops.message requires text")
+            }
+            let msgID = store.chatIntegration.sendMessage(message)
+            return ControlResponse(ok: true, result: ControlResult(id: msgID.uuidString))
+        case .chatopsExecute:
+            guard let command = request.args?.command, !command.isEmpty else {
+                return ControlResponse(ok: false, error: "chatops.execute requires command")
+            }
+            let result = store.chatIntegration.executeCommand(command)
+            return ControlResponse(ok: result.exitCode == 0, result: ControlResult(id: result.command))
+        case .pluginLoad:
+            guard let pluginID = request.args?.pluginID, !pluginID.isEmpty else {
+                return ControlResponse(ok: false, error: "plugin.load requires pluginID")
+            }
+            let success = store.pluginRegistry.load(pluginID)
+            return ControlResponse(ok: success, result: ControlResult(id: pluginID))
+        case .pluginExecute:
+            guard let pluginID = request.args?.pluginID, !pluginID.isEmpty else {
+                return ControlResponse(ok: false, error: "plugin.execute requires pluginID")
+            }
+            guard let command = request.args?.command, !command.isEmpty else {
+                return ControlResponse(ok: false, error: "plugin.execute requires command")
+            }
+            let result = store.pluginRegistry.execute(pluginID, command: command)
+            return ControlResponse(ok: result.exitCode == 0, result: ControlResult(id: pluginID))
         case .restoreClear:
             return clearSavedCommands()
         }

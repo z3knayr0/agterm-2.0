@@ -92,11 +92,39 @@ public final class AppStore {
     /// The quiet window before a scheduled (selection/font) save writes to disk.
     private static let saveDebounceInterval: TimeInterval = 0.3
 
+    /// Phase 1: Recording, Search, Overlays
+    @ObservationIgnored private var recordingStores: [UUID: RecordingStore] = [:]
+
+    /// Phase 2: Themes, Splits, Broadcast
+    @ObservationIgnored public private(set) var themeStore = ThemeStore()
+    @ObservationIgnored public private(set) var splitPaneModel = SplitPaneModel()
+    @ObservationIgnored public private(set) var broadcastState = BroadcastState()
+
+    /// Phase 3: Hooks, Analytics, Templates
+    @ObservationIgnored public private(set) var hookRegistry = HookRegistry()
+    @ObservationIgnored public private(set) var metricsCollector = MetricsCollector()
+    @ObservationIgnored public private(set) var templateLibrary = TemplateLibrary()
+
+    /// Phase 4: Remote, ChatOps, Plugins
+    @ObservationIgnored public private(set) var remoteSession = RemoteSession()
+    @ObservationIgnored public private(set) var chatIntegration = ChatIntegration()
+    @ObservationIgnored public private(set) var pluginRegistry = PluginRegistry()
+
     public init(workspaces: [Workspace] = [], selectedSessionID: UUID? = nil,
                 persistence: PersistenceStore = PersistenceStore()) {
         self.workspaces = workspaces
         self.selectedSessionID = selectedSessionID
         self.persistence = persistence
+    }
+
+    /// Get recording store for a session, creating if needed
+    public func recordingStore(for sessionID: UUID, sessionName: String = "session") -> RecordingStore {
+        if let existing = recordingStores[sessionID] {
+            return existing
+        }
+        let store = RecordingStore(sessionID: sessionID, sessionName: sessionName)
+        recordingStores[sessionID] = store
+        return store
     }
 
     /// The currently selected session, derived from `selectedSessionID`.

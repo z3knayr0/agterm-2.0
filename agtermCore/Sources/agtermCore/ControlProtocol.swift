@@ -53,6 +53,21 @@ public enum Command: String, Codable, Sendable {
     case configReload = "config.reload"
     case themeSet = "theme.set"
     case themeList = "theme.list"
+    case themeSave = "theme.save"
+    case sessionSplitRemove = "session.split.remove"
+    case broadcastInput = "broadcast.input"
+    case templateList = "template.list"
+    case templateApply = "template.apply"
+    case metricsRead = "metrics.read"
+    case metricsReset = "metrics.reset"
+    case hookRegister = "hook.register"
+    case hookFire = "hook.fire"
+    case remoteSync = "remote.sync"
+    case remoteConnect = "remote.connect"
+    case chatopsMessage = "chatops.message"
+    case chatopsExecute = "chatops.execute"
+    case pluginLoad = "plugin.load"
+    case pluginExecute = "plugin.execute"
     case restoreClear = "restore.clear"
 }
 
@@ -132,13 +147,30 @@ public struct ControlArgs: Codable, Sendable, Equatable {
     /// no per-call sound — the app may still play the Settings "Blocked sound" default on a `blocked` status.
     public var sound: String?
 
+    /// Phase 1: Output path for recording export
+    public var outputPath: String?
+    /// Phase 1: Query text for session search
+    public var query: String?
+    /// Phase 2: Axis for split (`horizontal`|`vertical`)
+    public var axis: String?
+    /// Phase 2: Overlay ID for floating terminals
+    public var overlayID: String?
+    /// Phase 3: Hook event type
+    public var event: String?
+    /// Phase 4: Plugin ID
+    public var pluginID: String?
+    /// Phase 4: Remote peer identifier
+    public var peerID: String?
+
     public init(name: String? = nil, cwd: String? = nil, workspace: String? = nil, workspaceName: String? = nil,
                 createWorkspace: Bool? = nil, text: String? = nil, select: Bool? = nil, mode: String? = nil,
                 command: String? = nil, wait: Bool? = nil, sizePercent: Int? = nil, window: String? = nil,
                 pane: String? = nil, to: String? = nil, title: String? = nil, body: String? = nil,
                 width: Int? = nil, height: Int? = nil, x: Int? = nil, y: Int? = nil, display: Int? = nil,
                 status: String? = nil, blink: Bool? = nil, autoReset: Bool? = nil, sound: String? = nil,
-                ratio: Double? = nil, ratioDelta: Double? = nil) {
+                ratio: Double? = nil, ratioDelta: Double? = nil, outputPath: String? = nil, query: String? = nil,
+                axis: String? = nil, overlayID: String? = nil, event: String? = nil, pluginID: String? = nil,
+                peerID: String? = nil) {
         self.name = name
         self.cwd = cwd
         self.workspace = workspace
@@ -166,6 +198,13 @@ public struct ControlArgs: Codable, Sendable, Equatable {
         self.sound = sound
         self.ratio = ratio
         self.ratioDelta = ratioDelta
+        self.outputPath = outputPath
+        self.query = query
+        self.axis = axis
+        self.overlayID = overlayID
+        self.event = event
+        self.pluginID = pluginID
+        self.peerID = peerID
     }
 }
 
