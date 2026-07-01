@@ -470,6 +470,37 @@ final class ControlServer {
             case .success(let (store, id)):
                 return await searchSession(id, store: store, text: request.args?.text, to: request.args?.to)
             }
+        case .sessionRecord:
+            return resolveSession(request.target, window: request.args?.window) { store, id in
+                guard let session = store.session(withID: id) else {
+                    return ControlResponse(ok: false, error: "no such session")
+                }
+                if session.recording != nil {
+                    return ControlResponse(ok: false, error: "recording already active")
+                }
+                let recording = RecordingStore(sessionID: session.id)
+                recording.start()
+                session.recording = recording
+                return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+            }
+        case .sessionExport:
+            guard let outputPath = request.args?.outputPath, !outputPath.isEmpty else {
+                return ControlResponse(ok: false, error: "session.export requires --output-path")
+            }
+            return resolveSession(request.target, window: request.args?.window) { store, id in
+                guard let session = store.session(withID: id) else {
+                    return ControlResponse(ok: false, error: "no such session")
+                }
+                guard let recording = session.recording else {
+                    return ControlResponse(ok: false, error: "no recording active")
+                }
+                do {
+                    try recording.export(to: outputPath)
+                    return ControlResponse(ok: true, result: ControlResult(id: id.uuidString))
+                } catch {
+                    return ControlResponse(ok: false, error: "export failed: \(error)")
+                }
+            }
         case .sessionOverlayOpen:
             guard let command = request.args?.command, !command.isEmpty else {
                 return ControlResponse(ok: false, error: "session.overlay.open requires a command")
