@@ -36,28 +36,68 @@ public final class SplitPaneModel: Sendable {
 
     /// Split a pane along an axis
     public func split(_ sessionID: UUID, axis: Axis) -> UUID {
-        let newPane = PaneNode(sessionID: UUID())
+        let newSessionID = UUID()
+        let newPane = PaneNode(sessionID: newSessionID)
         let oldPane = PaneNode(sessionID: sessionID)
-
         let parentNode = PaneNode(axis: axis, children: [oldPane, newPane])
-        root = parentNode
 
-        return newPane.sessionID ?? UUID()
+        if root == nil {
+            root = parentNode
+        } else {
+            var root = root!
+            if !split(sessionID, axis: axis, newPane: newPane, in: &root) {
+                // If sessionID not found in tree, replace root
+                root = parentNode
+            }
+            self.root = root
+        }
+
+        return newSessionID
+    }
+
+    private func split(_ sessionID: UUID, axis: Axis, newPane: PaneNode, in node: inout PaneNode) -> Bool {
+        // Check if this node is the one to split
+        if node.sessionID == sessionID {
+            let oldPane = PaneNode(sessionID: sessionID)
+            node = PaneNode(axis: axis, children: [oldPane, newPane])
+            return true
+        }
+
+        // Recursively search children
+        if var children = node.children {
+            for i in 0..<children.count {
+                if split(sessionID, axis: axis, newPane: newPane, in: &children[i]) {
+                    node.children = children
+                    return true
+                }
+            }
+        }
+
+        return false
     }
 
     /// Close a pane
     public func close(_ sessionID: UUID) {
-        guard let root = root else { return }
-        close(sessionID, in: root)
+        guard var root = root else { return }
+        if close(sessionID, in: &root) {
+            self.root = root
+        }
     }
 
-    private func close(_ sessionID: UUID, in node: PaneNode) -> Bool {
-        if let children = node.children {
-            for child in children where child.sessionID == sessionID {
+    private func close(_ sessionID: UUID, in node: inout PaneNode) -> Bool {
+        if var children = node.children {
+            children.removeAll { $0.sessionID == sessionID }
+
+            // If only one child remains after removal, promote it
+            if children.count == 1 {
+                node = children[0]
                 return true
             }
-            for child in children {
-                if close(sessionID, in: child) {
+
+            node.children = children
+
+            for i in 0..<children.count {
+                if close(sessionID, in: &node.children![i]) {
                     return true
                 }
             }

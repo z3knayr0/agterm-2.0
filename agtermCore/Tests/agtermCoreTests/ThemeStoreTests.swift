@@ -236,6 +236,7 @@ final class ThemeStoreTests {
             isBuiltin: false
         )
 
+        try FileManager.default.createDirectory(atPath: configPath, withIntermediateDirectories: true)
         let filePath = (configPath as NSString).appendingPathComponent("ghostty.json")
         let data = try JSONEncoder().encode(custom)
         try data.write(to: URL(fileURLWithPath: filePath))

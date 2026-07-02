@@ -67,7 +67,7 @@ public final class MetricsCollector: Sendable {
     /// Export metrics to JSON file
     public func export(to outputPath: String) throws {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = .secondsSince1970
         let data = try encoder.encode(metrics)
         try data.write(to: URL(fileURLWithPath: outputPath))
     }
