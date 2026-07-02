@@ -45,24 +45,45 @@ public final class SplitPaneModel: Sendable {
         return newPane.sessionID ?? UUID()
     }
 
-    /// Close a pane
+    /// Close a pane and remove it from the tree
     public func close(_ sessionID: UUID) {
-        guard let root = root else { return }
-        close(sessionID, in: root)
+        guard var currentRoot = root else { return }
+        if let updated = closeNode(sessionID, in: currentRoot) {
+            root = updated
+        } else {
+            // Session was the root pane itself
+            root = nil
+        }
     }
 
-    private func close(_ sessionID: UUID, in node: PaneNode) -> Bool {
-        if let children = node.children {
-            for child in children where child.sessionID == sessionID {
-                return true
-            }
-            for child in children {
-                if close(sessionID, in: child) {
-                    return true
-                }
+    private func closeNode(_ sessionID: UUID, in node: PaneNode) -> PaneNode? {
+        // If this node is the target, return nil to remove it
+        if node.sessionID == sessionID {
+            return nil
+        }
+
+        // Recursively close in children
+        guard var children = node.children else { return node }
+
+        var updatedChildren: [PaneNode] = []
+        for child in children {
+            if let updated = closeNode(sessionID, in: child) {
+                updatedChildren.append(updated)
             }
         }
-        return false
+
+        // If no children remain after closing, remove this parent too
+        guard !updatedChildren.isEmpty else { return nil }
+
+        // If only one child remains, collapse the hierarchy
+        if updatedChildren.count == 1 {
+            return updatedChildren[0]
+        }
+
+        // Multiple children remain, update and return
+        var updated = node
+        updated.children = updatedChildren
+        return updated
     }
 
     /// Get root pane

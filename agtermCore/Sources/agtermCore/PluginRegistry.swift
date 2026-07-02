@@ -30,6 +30,11 @@ public final class PluginRegistry: Sendable {
         loadPlugins()
     }
 
+    /// Validate script path contains no directory traversal attempts
+    private func isValidScriptPath(_ path: String) -> Bool {
+        !path.contains("/") && !path.contains("..") && !path.isEmpty
+    }
+
     /// Load all plugins from disk
     private func loadPlugins() {
         let fm = FileManager.default
@@ -44,7 +49,9 @@ public final class PluginRegistry: Sendable {
                 guard fm.fileExists(atPath: manifestPath) else { continue }
 
                 let data = try Data(contentsOf: URL(fileURLWithPath: manifestPath))
-                if let manifest = try? JSONDecoder().decode(PluginManifest.self, from: data) {
+                if var manifest = try? JSONDecoder().decode(PluginManifest.self, from: data) {
+                    // Validate mainScript path to prevent directory traversal
+                    guard isValidScriptPath(manifest.mainScript) else { continue }
                     plugins.append(manifest)
                 }
             }
@@ -84,6 +91,11 @@ public final class PluginRegistry: Sendable {
     public func execute(_ pluginID: String, command: String) -> (exitCode: Int32, output: String) {
         guard isLoaded(pluginID), let plugin = plugin(withID: pluginID) else {
             return (exitCode: 1, output: "Plugin not loaded or not found")
+        }
+
+        // Defense-in-depth: validate script path again at execution time
+        guard isValidScriptPath(plugin.mainScript) else {
+            return (exitCode: 1, output: "Invalid plugin script path")
         }
 
         let pluginPath = (pluginsPath as NSString).appendingPathComponent(pluginID)
