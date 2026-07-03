@@ -57,7 +57,7 @@ public final class RecordingStore: Sendable {
     public func export(to outputPath: String) throws {
         let fileURL = URL(fileURLWithPath: outputPath)
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601WithFractionalSeconds
+        encoder.dateEncodingStrategy = .secondsSince1970
 
         var lines: [String] = []
         for event in events {
@@ -76,7 +76,7 @@ public final class RecordingStore: Sendable {
         let fileURL = URL(fileURLWithPath: inputPath)
         let content = try String(contentsOf: fileURL, encoding: .utf8)
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601WithFractionalSeconds
+        decoder.dateDecodingStrategy = .secondsSince1970
 
         let store = RecordingStore(sessionID: sessionID, sessionName: sessionName)
         for line in content.split(separator: "\n") {
