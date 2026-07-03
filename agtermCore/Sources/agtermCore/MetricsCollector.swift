@@ -39,7 +39,7 @@ public final class MetricsCollector: Sendable {
         metrics.filter { $0.timestamp >= start && $0.timestamp <= end }
     }
 
-    /// Get summary statistics using Welford's algorithm to prevent overflow
+    /// Get summary statistics
     public func summary() -> [String: Double] {
         var summary: [String: Double] = [:]
 
@@ -53,9 +53,7 @@ public final class MetricsCollector: Sendable {
             }
 
             summary[countKey]! += 1
-            let prevAvg = summary[key]!
-            // Welford's algorithm: avoids overflow on large values
-            summary[key]! = prevAvg + (metric.value - prevAvg) / summary[countKey]!
+            summary[key]! = (summary[key]! * (summary[countKey]! - 1) + metric.value) / summary[countKey]!
         }
 
         return summary

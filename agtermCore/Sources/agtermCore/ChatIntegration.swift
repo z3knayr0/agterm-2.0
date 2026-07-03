@@ -57,7 +57,6 @@ public final class ChatIntegration: Sendable {
     }
 
     /// Execute a command and report result
-    /// Reads pipes in background to prevent deadlock on large output
     public func executeCommand(_ command: String) -> CommandResult {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -70,25 +69,10 @@ public final class ChatIntegration: Sendable {
 
         do {
             try task.run()
-
-            // Read pipes in background to prevent deadlock when buffers fill
-            var outData = Data()
-            var errData = Data()
-
-            DispatchQueue.global().async {
-                outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-            }
-            DispatchQueue.global().async {
-                errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-            }
-
             task.waitUntilExit()
 
-            // Give background reads a small time to complete
-            let deadline = Date().addingTimeInterval(1.0)
-            while Date() < deadline && (outData.isEmpty || errData.isEmpty) {
-                Thread.sleep(forTimeInterval: 0.01)
-            }
+            let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+            let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
 
             let stdout = String(data: outData, encoding: .utf8) ?? ""
             let stderr = String(data: errData, encoding: .utf8) ?? ""
